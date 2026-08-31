@@ -1,0 +1,1495 @@
+SAMSUNG NOTES-INSPIRED NOTES APP
+DETAILED UI/UX SPECIFICATION AND IMPLEMENTATION GUIDE
+======================================================
+
+PURPOSE
+-------
+This document defines a complete, developer-ready UI/UX specification for a modern
+notes application inspired by the design philosophy of Samsung Notes and Samsung
+One UI.
+
+IMPORTANT:
+This specification is intended to reproduce the UX principles, layout patterns,
+interaction quality, spacing, hierarchy, and overall feel of a polished One UI-style
+notes application. It should NOT copy Samsung's proprietary logos, icons, artwork,
+or exact branded visual assets.
+
+The application should feel:
+- Clean
+- Premium
+- Fast
+- Minimal
+- Comfortable for one-handed use
+- Excellent for both typing and handwriting
+- Consistent in light and dark mode
+- Suitable for phones and tablets
+
+
+======================================================
+1. DESIGN PHILOSOPHY
+======================================================
+
+The UI should follow these principles:
+
+1.1 CONTENT FIRST
+-----------------
+The user's notes are the most important element. Avoid unnecessary borders,
+decorations, gradients, and excessive controls.
+
+The application should visually disappear while the user is writing.
+
+1.2 ONE-HAND FRIENDLY
+---------------------
+Frequently used actions should be reachable near the bottom of the screen.
+
+Primary actions should generally be:
+- Near the thumb zone
+- Presented through bottom sheets
+- Available through floating action buttons
+- Grouped into a bottom toolbar when editing
+
+1.3 LARGE VISUAL HIERARCHY
+--------------------------
+Use large titles for major screens and smaller supporting text underneath.
+
+Example:
+
+Notes
+Your thoughts, ideas and reminders
+
+The title should immediately communicate what screen the user is viewing.
+
+1.4 SOFT GEOMETRY
+-----------------
+Use moderately rounded corners.
+
+Recommended:
+- Cards: 16-20 px
+- Buttons: 12-16 px
+- Bottom sheets: 24-28 px top corners
+- Floating action button: 18-20 px radius
+
+Avoid making every element excessively rounded.
+
+1.5 LOW VISUAL NOISE
+--------------------
+Avoid strong shadows and thick borders.
+
+Use:
+- Subtle surface differences
+- Light separators
+- Small elevation
+- Strong typography hierarchy
+
+
+======================================================
+2. GLOBAL DESIGN SYSTEM
+======================================================
+
+2.1 SCREEN BACKGROUND
+---------------------
+Light mode:
+- Main background: warm/off-white or very light neutral
+- Cards: slightly brighter surface
+
+Dark mode:
+- Main background: near-black/dark neutral
+- Cards: slightly lighter dark surface
+
+Do not use pure black everywhere.
+
+2.2 COLOR SYSTEM
+----------------
+
+Primary:
+A single accent color should be used for:
+- FAB
+- Selected controls
+- Active icons
+- Cursor/accent
+- Links
+- Important interactive states
+
+Supporting colors:
+- Primary text
+- Secondary text
+- Disabled text
+- Divider
+- Surface
+- Elevated surface
+- Error
+- Success
+- Warning
+
+The accent should not dominate the entire interface.
+
+2.3 TYPOGRAPHY
+--------------
+
+Recommended hierarchy:
+
+Screen title:
+- 28-34 px
+- Semi-bold
+- High contrast
+
+Section title:
+- 20-24 px
+- Semi-bold
+
+Note title:
+- 18-22 px
+- Medium/Semi-bold
+
+Body:
+- 15-17 px
+- Regular
+
+Secondary text:
+- 13-14 px
+
+Metadata:
+- 11-13 px
+
+The typography should have comfortable line height.
+
+2.4 SPACING
+-----------
+
+Use an 8-point spacing system.
+
+Examples:
+8 px   = small gap
+12 px  = compact gap
+16 px  = standard padding
+20 px  = comfortable padding
+24 px  = section spacing
+32 px  = major spacing
+40+ px = large visual separation
+
+Avoid arbitrary spacing throughout the application.
+
+
+======================================================
+3. APPLICATION NAVIGATION
+======================================================
+
+Recommended navigation structure:
+
+HOME
+ |
+ +-- All Notes
+ |
+ +-- Favorites
+ |
+ +-- Folders
+ |     |
+ |     +-- Personal
+ |     +-- Work
+ |     +-- Study
+ |     +-- Custom folders
+ |
+ +-- Shared Notes
+ |
+ +-- Trash
+ |
+ +-- Settings
+
+The application should use simple navigation rather than deeply nested screens.
+
+On phones:
+- Use a navigation drawer or bottom navigation where appropriate.
+- Prefer bottom sheets for secondary actions.
+
+On tablets:
+- Use a two-pane or three-pane layout.
+
+Example tablet structure:
+
++----------------+---------------------------+
+| Navigation     | Notes / Note Content      |
+|                |                           |
+| All Notes      | Selected note             |
+| Favorites      |                           |
+| Folders        |                           |
++----------------+---------------------------+
+
+
+======================================================
+4. HOME SCREEN
+======================================================
+
+The Home screen is the main dashboard.
+
+LAYOUT
+------
+
+Top:
+
+Notes
+[ Search ]                         [ ⋮ ]
+
+Below:
+
+[Favorites / Recent / Folders depending on state]
+
+Then note content.
+
+A typical phone layout:
+
+-----------------------------------
+Notes                         ⋮
+Search notes...
+-----------------------------------
+
+Recent
+
++-------------------------------+
+| Project Ideas                 |
+| Build a student social app... |
+| Today, 8:42 PM                |
++-------------------------------+
+
++-------------------------------+
+| Grocery List                  |
+| Milk, Bread, Coffee...        |
+| Yesterday                     |
++-------------------------------+
+
+                              (+)
+-----------------------------------
+
+4.1 HEADER
+----------
+
+The header should include:
+- Large screen title
+- Search button/field
+- Optional sort/filter
+- More menu
+
+The header should not occupy excessive vertical space.
+
+4.2 SEARCH
+----------
+
+When the user activates search:
+- Transform the header into a search field.
+- Automatically focus the keyboard.
+- Show recent searches if available.
+- Search should update results quickly.
+
+Search should support:
+- Note title
+- Note body
+- Checklist text
+- Folder name
+- Tags if implemented
+
+4.3 NOTE CARDS
+--------------
+
+Each note preview should display:
+
+- Title
+- First few lines of content
+- Updated date/time
+- Optional attachment indicator
+- Optional favorite indicator
+- Optional folder information
+
+Do not display too much content.
+
+The preview should help the user identify the note immediately.
+
+4.4 CARD INTERACTION
+--------------------
+
+Tap:
+Open note.
+
+Long press:
+Show selection mode.
+
+Swipe:
+Reveal contextual actions.
+
+Possible actions:
+- Favorite
+- Delete
+- Share
+- Move
+- Pin
+
+4.5 SORTING
+-----------
+
+Support:
+- Recently modified
+- Created date
+- Alphabetical
+- Custom order
+
+Provide sorting through a bottom sheet.
+
+
+======================================================
+5. FLOATING ACTION BUTTON
+======================================================
+
+The primary creation button should be prominent but not intrusive.
+
+Example:
+
+                           + 
+                         CREATE
+
+The FAB can open a creation menu:
+
++-------------------------+
+| New text note           |
+| New checklist           |
+| New drawing             |
+| Import PDF              |
++-------------------------+
+
+However, avoid making this menu unnecessarily complex.
+
+The most common action should be directly accessible.
+
+
+======================================================
+6. FOLDER SCREEN
+======================================================
+
+Folders organize notes.
+
+Display folders as:
+
++----------------+  +----------------+
+| 📁 Personal    |  | 📁 Work        |
+| 12 notes       |  | 8 notes        |
++----------------+  +----------------+
+
+Alternative list mode:
+
+📁 Personal                     12
+📁 Work                          8
+📁 Study                        24
+
+Allow:
+- Create folder
+- Rename folder
+- Delete folder
+- Move notes
+- Create subfolder
+- Change folder icon/color if desired
+
+Folder creation should use a bottom sheet instead of a large modal.
+
+
+======================================================
+7. NOTE EDITOR
+======================================================
+
+The editor is the most important screen.
+
+The editor should be extremely clean.
+
+Suggested structure:
+
+-----------------------------------
+←   Note title                 ⋮
+-----------------------------------
+
+Title
+
+Write something...
+
+
+
+
+
+
+
+
+
+-----------------------------------
++   Text  Draw  Image  Checklist
+-----------------------------------
+
+7.1 TOP BAR
+-----------
+
+Include:
+- Back button
+- Note title or document status
+- Save/sync state if required
+- More menu
+
+The top bar should remain minimal.
+
+Possible status:
+"Saved"
+"Saving..."
+"Offline"
+
+Do not force users to press a Save button for normal notes.
+
+7.2 NOTE TITLE
+--------------
+
+The title should be a separate editable field.
+
+Example:
+
+Project Ideas
+
+The title should have:
+- Larger font
+- Strong weight
+- No visible textbox border
+
+This creates a document-like experience.
+
+7.3 BODY
+--------
+
+The body should resemble a digital sheet of paper rather than a form.
+
+Do not surround the entire note with a textbox border.
+
+Cursor:
+- Clearly visible
+- Accent colored
+- Smooth movement
+
+7.4 AUTOSAVE
+------------
+
+Every meaningful edit should automatically update local state.
+
+Recommended behavior:
+
+User types
+   ↓
+Update editor state
+   ↓
+Debounce changes
+   ↓
+Persist locally
+   ↓
+Synchronize remotely if enabled
+
+The user should never worry about losing a note.
+
+
+======================================================
+8. RICH TEXT TOOLBAR
+======================================================
+
+When text is selected, show contextual formatting.
+
+Possible actions:
+
+Bold
+Italic
+Underline
+Strikethrough
+Text color
+Highlight
+Font size
+Alignment
+Bullets
+Numbered list
+Indent
+
+The toolbar can appear above the keyboard.
+
+Example:
+
+-----------------------------------
+B   I   U   •   ≡   A   ⋮
+-----------------------------------
+
+Do not permanently occupy large screen space with formatting controls.
+
+
+======================================================
+9. CHECKLIST
+======================================================
+
+Checklist mode should feel native.
+
+Example:
+
+☐ Learn React
+☑ Finish project
+☐ Apply for internship
+☐ Practice Python
+
+Interaction:
+- Tap checkbox -> toggle completion
+- Completed item -> visually muted/struck through
+- Enter -> creates another checklist item
+- Backspace on empty item -> exits checklist mode
+
+Checklist should support drag/reordering if practical.
+
+
+======================================================
+10. HANDWRITING / DRAWING MODE
+======================================================
+
+A Samsung Notes-style application should treat handwriting as a first-class
+feature rather than a simple image attachment.
+
+Drawing mode should provide:
+
+- Pen
+- Pencil
+- Highlighter
+- Eraser
+- Lasso/select
+- Undo
+- Redo
+- Stroke size
+- Opacity
+- Color palette
+
+Toolbar example:
+
+-----------------------------------
+Undo  Redo | Pen | Marker | Eraser
+-----------------------------------
+
+10.1 PEN SELECTION
+------------------
+
+Opening the pen menu should show:
+
+Pen
+Pencil
+Brush
+Highlighter
+
+Each tool should show:
+- Stroke preview
+- Thickness
+- Opacity
+- Color
+
+10.2 CANVAS
+-----------
+
+The drawing canvas should support:
+- Freehand strokes
+- Pressure sensitivity where hardware supports it
+- Palm rejection where available
+- Zoom
+- Pan
+- Selection
+- Delete
+- Move strokes
+
+For Android stylus devices, use platform stylus APIs where possible.
+
+10.3 PAGE BACKGROUNDS
+---------------------
+
+Offer optional templates:
+
+- Blank
+- Ruled
+- Grid
+- Dotted
+- Checklist
+- Cornell-style notes
+- Music notation if desired
+
+The background should be subtle and never overpower handwriting.
+
+
+======================================================
+11. ATTACHMENTS
+======================================================
+
+Notes may contain:
+
+- Images
+- Documents
+- PDFs
+- Audio recordings
+- Drawings
+- Links
+
+Attachments should appear as compact blocks.
+
+Example:
+
++-------------------------------+
+| PDF                           |
+| project-report.pdf            |
+| 2.4 MB                        |
++-------------------------------+
+
+Images should support:
+- Preview
+- Crop
+- Rotate
+- Delete
+- Full-screen view
+
+
+======================================================
+12. PDF VIEWER / ANNOTATION
+======================================================
+
+If PDF functionality is implemented, the user should be able to:
+
+- Import PDF
+- View pages
+- Draw over PDF
+- Highlight text
+- Add text
+- Add handwritten annotations
+- Add images
+- Navigate pages
+- Search PDF
+
+A bottom toolbar can contain annotation tools.
+
+The PDF should remain visually dominant while editing.
+
+
+======================================================
+13. AUDIO NOTES
+======================================================
+
+Audio recording should be accessible through the attachment/create menu.
+
+Recording UI:
+
+-----------------------------------
+Recording...
+00:34
+
+        ●
+
+Pause                 Stop
+-----------------------------------
+
+After recording:
+
+Audio recording
+00:34
+[▶ Play]
+
+If speech-to-text is supported:
+- Show transcript
+- Allow transcript search
+- Link transcript sections to timestamps
+
+
+======================================================
+14. SEARCH EXPERIENCE
+======================================================
+
+Search should feel instantaneous.
+
+Search results should show:
+
+Search: "database"
+
+3 notes found
+
+Project Architecture
+"...PostgreSQL database..."
+
+Hospital ERP
+"...database schema..."
+
+Study Notes
+"...database normalization..."
+
+Highlight matching text.
+
+Search filters:
+- All notes
+- Folder
+- Date
+- Attachments
+- Handwritten content if OCR is available
+
+
+======================================================
+15. NOTE OPTIONS MENU
+======================================================
+
+The three-dot menu can contain:
+
+- Add to favorites
+- Pin
+- Share
+- Export
+- Save as PDF
+- Move
+- Duplicate
+- Lock
+- Print
+- Delete
+
+The menu should be a bottom sheet on mobile where appropriate.
+
+Actions should be grouped logically.
+
+Example:
+
+NOTE
+Open / Rename
+
+ORGANIZE
+Move
+Favorite
+Pin
+
+SHARE
+Share
+Export
+
+DANGER
+Delete
+
+
+======================================================
+16. LOCKED / PRIVATE NOTES
+======================================================
+
+Optional privacy feature.
+
+A locked note should display:
+
+🔒 Locked note
+
+Tap:
+Authenticate
+
+Then:
+Unlock note
+
+Authentication can use:
+- Device biometric
+- Device credential
+- Application PIN
+
+Sensitive content should not be displayed in previews.
+
+
+======================================================
+17. DARK MODE
+======================================================
+
+Dark mode should not simply invert the light theme.
+
+Use a dedicated dark color system.
+
+Important considerations:
+- Reduce contrast slightly for secondary surfaces.
+- Keep primary text highly readable.
+- Avoid pure white text everywhere.
+- Ensure accent colors remain readable.
+- Drawing colors should remain visually distinguishable.
+
+The editor should feel like a dark writing environment rather than a black web page.
+
+
+======================================================
+18. EMPTY STATES
+======================================================
+
+Never leave an empty screen completely blank.
+
+Example:
+
+No notes yet
+
+Capture your ideas, tasks and thoughts.
+
+[Create your first note]
+
+For empty folders:
+
+This folder is empty
+
+Move or create a note here.
+
+
+======================================================
+19. LOADING STATES
+======================================================
+
+Avoid full-screen loading spinners for normal operations.
+
+Use:
+- Skeleton cards
+- Small inline progress
+- Subtle transition
+
+Example:
+
++-----------------------------+
+| █████████                  |
+| ███████████████            |
+| █████                       |
++-----------------------------+
+
+The UI should remain responsive.
+
+
+======================================================
+20. ERROR STATES
+======================================================
+
+Errors should explain:
+1. What happened
+2. Whether the user's data is safe
+3. What action they can take
+
+Bad:
+"Error 500"
+
+Better:
+"Couldn't sync this note.
+Your changes are saved on this device.
+Try syncing again."
+
+
+======================================================
+21. BOTTOM SHEETS
+======================================================
+
+Use bottom sheets extensively for secondary actions.
+
+Example:
+
+-----------------------------------
+             ───
+Create note
+
+📝 Text note
+☑ Checklist
+✍ Drawing
+📄 Import PDF
+🎙 Audio
+-----------------------------------
+
+Bottom sheets should:
+- Have rounded top corners
+- Have a visible drag handle
+- Use comfortable padding
+- Support swipe-to-dismiss
+- Animate smoothly
+
+
+======================================================
+22. ANIMATIONS
+======================================================
+
+Animations should communicate state changes rather than exist for decoration.
+
+Recommended animations:
+
+Opening note:
+- Short fade/slide transition
+
+FAB:
+- Scale slightly on press
+
+Bottom sheet:
+- Smooth slide from bottom
+
+Deleting note:
+- Card collapse/fade
+
+Moving note:
+- Subtle confirmation animation
+
+Checkbox:
+- Short check animation
+
+Search:
+- Smooth header transformation
+
+Avoid long animations.
+
+Target:
+Approximately 150-300 ms for most interface transitions.
+
+
+======================================================
+23. RESPONSIVE DESIGN
+======================================================
+
+PHONE
+-----
+
+Use a single-column layout.
+
+Typical structure:
+
+Header
+↓
+Search
+↓
+Sections
+↓
+Notes
+↓
+FAB
+
+TABLET
+------
+
+Use two-pane layout:
+
+Navigation | Notes
+
+For an opened note:
+
+Navigation | Note list | Editor
+
+Large-screen layouts should take advantage of available space instead of
+simply stretching the phone UI.
+
+
+======================================================
+24. ACCESSIBILITY
+======================================================
+
+Implement:
+
+- Minimum touch targets around 44-48 px
+- Screen-reader labels
+- Sufficient text contrast
+- Scalable fonts
+- Reduced-motion support
+- Keyboard navigation where relevant
+- Clear focus states
+- Do not rely solely on color to indicate state
+
+
+======================================================
+25. RECOMMENDED COMPONENT STRUCTURE
+======================================================
+
+Flutter example:
+
+lib/
+|
++-- app/
+|   +-- app.dart
+|   +-- theme/
+|       +-- app_theme.dart
+|
++-- core/
+|   +-- constants/
+|   +-- utils/
+|   +-- widgets/
+|
++-- features/
+|   +-- notes/
+|       +-- presentation/
+|       |   +-- screens/
+|       |   +-- widgets/
+|       |   +-- controllers/
+|       |
+|       +-- data/
+|       |   +-- models/
+|       |   +-- repositories/
+|       |
+|       +-- domain/
+|           +-- entities/
+|           +-- repositories/
+|
++-- features/
+|   +-- folders/
+|   +-- search/
+|   +-- settings/
+|   +-- drawing/
+
+
+======================================================
+26. DATA MODEL
+======================================================
+
+A basic Note object:
+
+Note
+----
+id
+title
+content
+createdAt
+updatedAt
+folderId
+isFavorite
+isPinned
+isLocked
+noteType
+attachments
+checklistItems
+drawingData
+
+Folder
+------
+id
+name
+parentFolderId
+createdAt
+updatedAt
+
+Attachment
+----------
+id
+noteId
+type
+name
+path
+size
+createdAt
+
+For rich text, avoid storing only raw HTML if the editor requires structured
+editing. A structured document format may be more appropriate.
+
+For handwriting, store vector stroke data rather than only a flattened bitmap
+where editing is required.
+
+
+======================================================
+27. LOCAL-FIRST ARCHITECTURE
+======================================================
+
+A notes application should preferably be local-first.
+
+Recommended flow:
+
+User edit
+   ↓
+Update UI immediately
+   ↓
+Write to local database
+   ↓
+Mark note as dirty
+   ↓
+Sync with server
+   ↓
+Resolve conflicts
+   ↓
+Mark synchronized
+
+This makes the app usable without internet.
+
+Possible local databases:
+- SQLite
+- Drift
+- Isar
+- Hive for simpler use cases
+
+For a serious structured notes application, SQLite/Drift is a strong option.
+
+
+======================================================
+28. CLOUD SYNC
+======================================================
+
+If cloud synchronization is required:
+
+Client
+  |
+  v
+API
+  |
+  v
+Database
+  |
+  +-- Object storage for attachments
+
+Sync metadata should include:
+- Updated timestamp
+- Device ID
+- Revision/version
+- Sync state
+
+Do not overwrite a newer version blindly.
+
+For conflicts, consider:
+- Last-write-wins for simple notes
+- Revision-based conflict detection
+- Merge strategy for structured documents
+
+
+======================================================
+29. PERFORMANCE REQUIREMENTS
+======================================================
+
+The home screen should load quickly.
+
+Important optimizations:
+- Lazy-load notes
+- Paginate large note lists
+- Generate image thumbnails
+- Compress previews
+- Avoid loading complete attachments in the list
+- Use indexed database queries
+- Debounce search
+- Save editor changes asynchronously
+- Keep drawing rendering efficient
+
+Large handwriting documents should not cause the entire editor to rebuild.
+
+
+======================================================
+30. MICRO-INTERACTIONS
+======================================================
+
+Examples:
+
+Favorite:
+Tap heart/star
+→ short scale animation
+→ icon changes state
+
+Delete:
+Swipe card
+→ reveal delete action
+→ remove card
+→ show Undo snackbar
+
+Move:
+Tap Move
+→ folder bottom sheet
+→ select folder
+→ show confirmation
+
+Save:
+User stops typing
+→ background persistence
+→ subtle "Saved" state
+
+These interactions make the app feel polished.
+
+
+======================================================
+31. SNACKBARS
+======================================================
+
+Use snackbars for reversible actions.
+
+Example:
+
+Note deleted
+[UNDO]
+
+Note moved to Work
+[UNDO]
+
+Copied to clipboard
+[OK]
+
+Do not use snackbars for critical errors that require immediate attention.
+
+
+======================================================
+32. SETTINGS SCREEN
+======================================================
+
+Recommended sections:
+
+ACCOUNT
+- Account
+- Sync
+
+NOTES
+- Default note type
+- Default folder
+- Note templates
+- Autosave
+
+EDITOR
+- Font
+- Text size
+- Page background
+- Handwriting settings
+
+APPEARANCE
+- Light
+- Dark
+- System default
+
+SECURITY
+- App lock
+- Locked notes
+
+STORAGE
+- Storage usage
+- Clear cache
+- Export data
+
+ABOUT
+- Version
+- Privacy
+- Terms
+
+
+======================================================
+33. IMPLEMENTATION ROADMAP
+======================================================
+
+PHASE 1 — CORE UI
+------------------
+Build:
+- Home
+- Note list
+- Create note
+- Edit note
+- Delete note
+- Folders
+- Search
+
+Goal:
+A fully usable text notes application.
+
+PHASE 2 — POLISH
+-----------------
+Add:
+- Animations
+- Bottom sheets
+- Dark mode
+- Empty states
+- Loading states
+- Snackbars
+- Responsive layouts
+
+Goal:
+Make the application feel premium.
+
+PHASE 3 — RICH EDITOR
+---------------------
+Add:
+- Bold
+- Italic
+- Lists
+- Checklists
+- Text formatting
+- Images
+- Links
+
+Goal:
+Make the editor comparable to a serious productivity application.
+
+PHASE 4 — HANDWRITING
+---------------------
+Add:
+- Drawing canvas
+- Pen
+- Pencil
+- Highlighter
+- Eraser
+- Undo/redo
+- Stroke selection
+- Stylus support
+
+Goal:
+Make handwriting a first-class feature.
+
+PHASE 5 — DOCUMENTS
+-------------------
+Add:
+- PDF import
+- PDF viewer
+- PDF annotation
+- Export to PDF
+
+PHASE 6 — CLOUD
+---------------
+Add:
+- Authentication
+- Sync
+- Cloud storage
+- Conflict resolution
+
+PHASE 7 — ADVANCED FEATURES
+---------------------------
+Potential features:
+- OCR
+- Handwriting-to-text
+- Audio transcription
+- AI summaries
+- Translation
+- Smart search
+- Note suggestions
+
+
+======================================================
+34. RECOMMENDED FLUTTER STACK
+======================================================
+
+UI:
+Flutter
+
+State management:
+Riverpod or Bloc
+
+Local database:
+Drift + SQLite
+
+Backend:
+Node.js/NestJS or another REST/GraphQL backend
+
+Cloud database:
+PostgreSQL
+
+File storage:
+S3-compatible object storage
+
+Authentication:
+JWT + refresh tokens or a managed authentication service
+
+Rich text:
+A mature Flutter rich-text editor package
+
+PDF:
+A dedicated PDF rendering/annotation package
+
+Drawing:
+Custom Flutter Canvas / CustomPainter or a mature handwriting package
+
+Search:
+SQLite FTS for local search
+or
+PostgreSQL full-text search for server-side search
+
+
+======================================================
+35. SCREEN-BY-SCREEN IMPLEMENTATION ORDER
+======================================================
+
+Build in exactly this order:
+
+1. App shell
+2. Theme system
+3. Home screen
+4. Note card
+5. Create note
+6. Note editor
+7. Autosave
+8. Folder system
+9. Search
+10. Selection mode
+11. Bottom sheets
+12. Dark mode
+13. Checklist
+14. Rich text
+15. Attachments
+16. Drawing
+17. PDF
+18. Audio
+19. Settings
+20. Authentication
+21. Cloud synchronization
+
+
+======================================================
+36. HOW TO ACHIEVE THE SAMSUNG/ONE UI FEEL
+======================================================
+
+Do not attempt to achieve the visual style merely by changing colors.
+
+The "feel" comes from the combination of:
+
+1. Typography hierarchy
+2. Large screen headers
+3. Generous spacing
+4. Rounded surfaces
+5. Bottom-oriented controls
+6. Bottom sheets
+7. Subtle animation
+8. Minimal borders
+9. Strong touch targets
+10. Clear information hierarchy
+11. Native-feeling gestures
+12. Excellent dark mode
+13. Fast response
+14. Consistent iconography
+
+The application should feel calm and predictable.
+
+Every interaction should have a clear visual response.
+
+
+======================================================
+37. FINAL QUALITY CHECKLIST
+======================================================
+
+Before considering the UI complete, verify:
+
+[ ] Home screen has clear hierarchy
+[ ] Notes are easy to scan
+[ ] Search is fast
+[ ] FAB is reachable
+[ ] Note editor is distraction-free
+[ ] Autosave works
+[ ] Keyboard does not hide controls
+[ ] Bottom sheets work correctly
+[ ] Dark mode is properly designed
+[ ] Empty states exist
+[ ] Loading states exist
+[ ] Error states exist
+[ ] Swipe gestures work
+[ ] Long press selection works
+[ ] Checklists work naturally
+[ ] Rich text formatting works
+[ ] Images can be attached
+[ ] Handwriting canvas is responsive
+[ ] Undo/redo works
+[ ] Stylus input is supported where possible
+[ ] Tablet layout is implemented
+[ ] Accessibility labels exist
+[ ] Touch targets are large enough
+[ ] Large note lists remain performant
+[ ] Offline editing works
+[ ] Data is persisted safely
+[ ] Sync conflicts are handled
+[ ] Destructive actions can be undone
+[ ] UI animations are short and purposeful
+
+
+======================================================
+38. DEVELOPMENT PRINCIPLE
+======================================================
+
+The most important rule is:
+
+BUILD THE EXPERIENCE, NOT JUST THE SCREENS.
+
+A notes application can have the correct colors, cards, icons, and buttons and
+still feel poor.
+
+The quality comes from:
+- How quickly a note opens
+- How quickly typing appears
+- Whether the keyboard behaves correctly
+- Whether notes are saved automatically
+- Whether scrolling remains smooth
+- Whether handwriting feels natural
+- Whether actions are reachable
+- Whether mistakes can be undone
+- Whether the interface stays out of the user's way
+
+The final product should feel like a native Android productivity application,
+while using an original visual identity inspired by One UI principles.
+
+
+======================================================
+END OF SPECIFICATION
+======================================================
