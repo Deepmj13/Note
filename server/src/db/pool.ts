@@ -5,7 +5,7 @@ const { Pool } = pg;
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error('DATABASE_URL is not set. Copy server/.env.example to server/.env and configure it.');
+  throw new Error('DATABASE_URL is not set. Configure it in server/.env.');
 }
 
 export const pool = new Pool({
