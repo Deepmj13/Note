@@ -8,10 +8,11 @@ import { logger } from '../lib/logger.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
- * Applies pending database migrations (currently the idempotent `initial`
- * schema). Safe to call on every startup: schema_migrations tracks what has
- * already been applied. Does NOT close the pool so the server can keep using
- * it after boot.
+ * Applies database migrations. The idempotent `initial` schema is re-applied
+ * on every startup (self-healing if individual tables are missing/reset),
+ * while destructive steps (dropping legacy tables) only run once, guarded by
+ * the schema_migrations marker. Does NOT close the pool so the server can
+ * keep using it after boot.
  */
 export async function runMigrations(): Promise<void> {
   const sql = await readFile(join(__dirname, 'schema.sql'), 'utf8');
@@ -43,14 +44,21 @@ export async function runMigrations(): Promise<void> {
         drop table if exists folders cascade;
         drop table if exists users cascade;
       `);
-      await client.query(sql);
-      await client.query(
-        `insert into schema_migrations (name) values ('initial')`,
-      );
       logger.info('Applied initial schema.');
     } else {
       logger.info('Initial schema already applied; nothing to do.');
     }
+
+    // `schema.sql` is idempotent (`create table if not exists`), so it is
+    // re-applied on every boot. This self-heals a database whose tables were
+    // dropped/reset after the `initial` migration was recorded (otherwise the
+    // schema_migrations marker would cause every query to fail the next boot).
+    await client.query(sql);
+    await client.query(
+      `insert into schema_migrations (name)
+       values ('initial')
+       on conflict (name) do nothing`,
+    );
 
     await client.query('commit');
   } catch (err) {

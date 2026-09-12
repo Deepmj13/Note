@@ -102,7 +102,7 @@ class SyncApi {
       updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
       isDeleted: row['is_deleted'] as bool? ?? false,
       isSynced: true,
-      version: BigInt.from(row['version'] as int? ?? 1),
+      version: BigInt.from(num.tryParse('${row['version']}')?.toInt() ?? 1),
       isFavorite: row['is_favorite'] as bool? ?? false,
       isPinned: row['is_pinned'] as bool? ?? false,
       noteType: NoteType.values.asNameMap()[typeName] ?? NoteType.text,
