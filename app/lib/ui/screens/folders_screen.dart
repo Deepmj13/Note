@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:note_v4/core/app_page_route.dart';
 import 'package:note_v4/data/local/database.dart';
+import 'package:note_v4/providers/auth_notifier.dart';
 import 'package:note_v4/providers/folders_notifier.dart';
 import 'package:note_v4/ui/screens/home_screen.dart';
 import 'package:note_v4/ui/widgets/folders_view.dart';
@@ -45,10 +46,11 @@ class FoldersScreen extends ConsumerWidget {
     if (name == null || name.isEmpty || !context.mounted) return;
     final id = const Uuid().v4();
     final now = DateTime.now();
+    final userId = ref.read(currentUserIdProvider) ?? '';
     await ref.read(foldersNotifierProvider.notifier).addFolder(
       Folder(
         id: id,
-        userId: '',
+        userId: userId,
         name: name,
         parentFolderId: null,
         createdAt: now,

@@ -109,15 +109,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     final sorted = [...result];
+    // Pinned notes float to the top regardless of the chosen sort, so they
+    // stay accessible while browsing by recency, creation date or title.
+    int comparePinned(Note a, Note b) {
+      if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
+      return 0;
+    }
+
     switch (_sort) {
       case _NoteSort.updated:
-        sorted.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        sorted.sort((a, b) {
+          final pinned = comparePinned(a, b);
+          return pinned != 0 ? pinned : b.updatedAt.compareTo(a.updatedAt);
+        });
       case _NoteSort.created:
-        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        sorted.sort((a, b) {
+          final pinned = comparePinned(a, b);
+          return pinned != 0 ? pinned : b.createdAt.compareTo(a.createdAt);
+        });
       case _NoteSort.title:
-        sorted.sort(
-          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-        );
+        sorted.sort((a, b) {
+          final pinned = comparePinned(a, b);
+          return pinned != 0
+              ? pinned
+              : a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        });
     }
     return sorted;
   }
@@ -1008,10 +1024,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (name == null || name.isEmpty || !mounted) return;
     final id = const Uuid().v4();
     final now = DateTime.now();
+    final userId = ref.read(currentUserIdProvider) ?? '';
     await ref.read(foldersNotifierProvider.notifier).addFolder(
       Folder(
         id: id,
-        userId: '',
+        userId: userId,
         name: name,
         parentFolderId: null,
         createdAt: now,

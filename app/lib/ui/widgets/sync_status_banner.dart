@@ -48,6 +48,20 @@ class SyncStatusBanner extends ConsumerWidget {
               style: context.metadataText.copyWith(color: palette.secondaryText),
             ),
           ),
+          TextButton(
+            onPressed: () =>
+                ref.read(syncNotifierProvider.notifier).syncNow(),
+            style: TextButton.styleFrom(
+              foregroundColor: status == SyncStatus.offline
+                  ? palette.danger
+                  : palette.warning,
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Try again'),
+          ),
         ],
       ),
     );
