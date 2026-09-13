@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cross_file/cross_file.dart';
+import 'package:note_v4/core/models/note_block.dart';
 import 'package:note_v4/data/local/database.dart';
 
 /// Formats notes into the standard JSON export schema and Markdown.
@@ -28,6 +29,14 @@ class NoteExporter {
     if (note.title.trim().isNotEmpty) {
       buffer.writeln('# ${note.title}');
       buffer.writeln();
+    }
+    if (NoteBlock.isEncoded(note.content)) {
+      for (final block in NoteBlock.fromStorage(note.content)) {
+        final line = block.toMarkdown();
+        if (line.isEmpty) continue;
+        buffer.writeln(line.trimRight());
+      }
+      return buffer.toString().trimRight();
     }
     if (note.noteType == NoteType.checklist) {
       for (final line in note.content.split('\n')) {
@@ -65,6 +74,8 @@ class NoteExporter {
         'content': n.content,
         'created_at': n.createdAt.toUtc().toIso8601String(),
         'updated_at': n.updatedAt.toUtc().toIso8601String(),
+        'is_deleted': n.isDeleted,
+        'version': n.version.toInt(),
         'note_type': n.noteType.name,
         'is_favorite': n.isFavorite,
         'is_pinned': n.isPinned,

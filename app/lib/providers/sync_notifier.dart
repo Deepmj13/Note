@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:note_v4/data/repositories/note_repository.dart';
 import 'package:note_v4/data/repositories/sync_repository.dart';
@@ -77,21 +78,30 @@ class SyncNotifier extends Notifier<SyncStatus> {
       _retryAttempt = 0;
       _retryTimer?.cancel();
       state = SyncStatus.idle;
+    } on DioException catch (e) {
+      final isConnection =
+          e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout;
+      _scheduleRetry(
+        waiting: isConnection ? SyncStatus.retrying : SyncStatus.error,
+      );
     } catch (_) {
-      _scheduleRetry();
+      _scheduleRetry(waiting: SyncStatus.error);
     } finally {
       _inFlight = null;
       if (!completer.isCompleted) completer.complete();
     }
   }
 
-  void _scheduleRetry() {
+  void _scheduleRetry({SyncStatus waiting = SyncStatus.retrying}) {
     _retryTimer?.cancel();
     final multiplier = 1 << (_retryAttempt > 6 ? 6 : _retryAttempt);
     final delay = _baseRetryDelay * multiplier;
     final capped = delay > _maxRetryDelay ? _maxRetryDelay : delay;
     _retryAttempt++;
-    state = SyncStatus.retrying;
+    state = waiting;
     _retryTimer = Timer(capped, () {
       unawaited(syncNow());
     });
@@ -107,6 +117,17 @@ class SyncNotifier extends Notifier<SyncStatus> {
 
     final remote = ref.read(syncRepositoryProvider);
     final local = ref.read(noteRepositoryProvider);
+
+    // 0) Honor pending permanent deletes before pulling. Purged rows were
+    //    hard-deleted locally while possibly offline; if the server still has
+    //    them, a pull would resurrect them. Deleting on the server first and
+    //    only then clearing the tombstone list keeps the trash permanent.
+    //    Failure aborts the cycle so the retry loop completes the purge.
+    final pendingPurges = await local.pendingPurges(userId);
+    if (pendingPurges.isNotEmpty) {
+      await remote.purgeNotes(userId, pendingPurges);
+      await local.clearPendingPurges(userId);
+    }
 
     // 1) Pull newer remote rows and merge them locally.
     final since =
@@ -155,8 +176,29 @@ class SyncNotifier extends Notifier<SyncStatus> {
       return;
     }
 
-    // 4) Advance the incremental sync cursor.
-    await local.setLastSyncedAt(userId, DateTime.now().toUtc());
+    // 4) Advance the incremental sync cursor. Advancing by wall-clock time
+    //    alone can permanently skip rows authored by devices whose clock lags
+    //    ahead. Advance to the newest timestamp actually seen from the server
+    //    instead, clamped so the cursor never jumps into the future (which
+    //    would skip rows written at real times in the meantime). Never moves
+    //    backwards.
+    final now = DateTime.now().toUtc();
+    if (remoteNotes.isEmpty && remoteFolders.isEmpty) {
+      // Nothing newer exists on the server; fast-forwarding is safe.
+      await local.setLastSyncedAt(userId, now);
+    } else {
+      var latest = since;
+      for (final note in remoteNotes) {
+        if (note.updatedAt.isAfter(latest)) latest = note.updatedAt;
+      }
+      for (final folder in remoteFolders) {
+        if (folder.updatedAt.isAfter(latest)) latest = folder.updatedAt;
+      }
+      await local.setLastSyncedAt(
+        userId,
+        latest.isAfter(now) ? now : latest,
+      );
+    }
   }
 }
 

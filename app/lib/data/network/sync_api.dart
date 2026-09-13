@@ -4,36 +4,59 @@ import 'api_client.dart';
 /// Talks to the backend sync endpoints: /sync/notes and /sync/folders.
 ///
 /// Timestamps travel as ISO-8601 strings; user_id is always taken from the
-/// JWT on the server, so it is not sent here.
+/// JWT on the server, so it is not sent here. Pulls are paginated server-side:
+/// each page is fetched by passing back the returned `next_cursor` until
+/// `has_more` is false, so large result sets stream in without unbounded
+/// memory on server or client.
 class SyncApi {
   SyncApi(this._client);
 
   final ApiClient _client;
 
+  static const _pageSize = 500;
+
   Future<List<Note>> pullNotes(String userId, DateTime since) async {
-    final res = await _client.dio.get<List<dynamic>>(
-      '/sync/notes',
-      queryParameters: {
-        'since': since.toUtc().toIso8601String(),
-      },
-    );
-    final rows = res.data ?? const [];
-    return rows
-        .map((r) => _noteFromRow(r as Map<String, dynamic>))
-        .toList();
+    final rows = await _pullAllRows('/sync/notes', since);
+    return rows.map(_noteFromRow).toList();
   }
 
   Future<List<Folder>> pullFolders(String userId, DateTime since) async {
-    final res = await _client.dio.get<List<dynamic>>(
-      '/sync/folders',
-      queryParameters: {
-        'since': since.toUtc().toIso8601String(),
-      },
-    );
-    final rows = res.data ?? const [];
-    return rows
-        .map((r) => _folderFromRow(r as Map<String, dynamic>))
-        .toList();
+    final rows = await _pullAllRows('/sync/folders', since);
+    return rows.map(_folderFromRow).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _pullAllRows(
+    String path,
+    DateTime since,
+  ) async {
+    final all = <Map<String, dynamic>>[];
+    String? cursor;
+    var hasMore = true;
+    while (hasMore) {
+      final res = await _client.dio.get<Map<String, dynamic>>(
+        path,
+        queryParameters: {
+          'since': since.toUtc().toIso8601String(),
+          'limit': _pageSize,
+          'cursor': ?cursor,
+        },
+      );
+      final data = res.data ?? const {};
+      final rows = (data['rows'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+      hasMore = data['has_more'] as bool? ?? false;
+      final next = data['next_cursor'] as String?;
+      all.addAll(rows);
+      // Progress guards: a page must produce rows and actually advance the
+      // cursor, otherwise a broken server response would loop forever.
+      if (rows.isEmpty || next == null || next == cursor) {
+        hasMore = false;
+      } else {
+        cursor = next;
+      }
+    }
+    return all;
   }
 
   /// Pushes dirty notes and returns the ids the server accepted. Ids absent
@@ -58,6 +81,16 @@ class SyncApi {
       data: payload,
     );
     return _parseApplied(res.data);
+  }
+
+  /// Permanently deletes [ids] on the server. Used by trash "delete forever";
+  /// only called after the same rows were hard-deleted locally.
+  Future<void> purgeNotes(String userId, List<String> ids) async {
+    if (ids.isEmpty) return;
+    await _client.dio.post<Map<String, dynamic>>(
+      '/sync/purge',
+      data: {'ids': ids},
+    );
   }
 
   static Set<String> _parseApplied(Map<String, dynamic>? data) {

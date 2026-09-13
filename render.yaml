@@ -1,16 +1,25 @@
+# Render blueprint for the Note API. The server lives in ./server; Render
+# builds and starts it from there.
+#
+# Secrets (DATABASE_URL, JWT_SECRET, CORS_ORIGINS) are set in Render -> your
+# service -> Environment, never committed to git. CORS_ORIGINS must be a
+# comma-separated allowlist of browser origins in production (the server
+# refuses to boot without it when NODE_ENV=production).
 services:
   - type: web
     name: note-v4-server
     runtime: node
-    plan: free
     rootDir: server
-    buildCommand: npm ci && npm run build
+    plan: free
+    buildCommand: npm ci --omit=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
-      - key: CORS_ORIGINS
-        value: https://placeholder.example.com
+      - key: NODE_ENV
+        value: production
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
         sync: false

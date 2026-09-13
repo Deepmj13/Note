@@ -14,7 +14,7 @@ class ImportFileEntry {
   String get title {
     final lastSlash = name.lastIndexOf(RegExp(r'[/\\]'));
     final base = lastSlash == -1 ? name : name.substring(lastSlash + 1);
-    return base.replaceAll(RegExp(r'\.txt$', caseSensitive: false), '');
+    return base.replaceAll(RegExp(r'\.(txt|md)$', caseSensitive: false), '');
   }
 
   String get preview {

@@ -29,6 +29,18 @@ class NoteShare {
     );
   }
 
+  /// Exports every [notes] as one combined Markdown document.
+  static Future<void> exportMarkdown(List<Note> notes) async {
+    final markdown = NoteExporter.toMarkdownAll(notes);
+    final file = NoteExporter.asXFile(
+      markdown,
+      'notes_export_${_timestamp()}.md',
+    );
+    await SharePlus.instance.share(
+      ShareParams(files: [file], fileNameOverrides: [file.name]),
+    );
+  }
+
   static String _safeFilename(Note note, String ext) {
     final base = note.title.trim().replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final filename = base.isEmpty ? 'note' : base;

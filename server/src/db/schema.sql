@@ -42,6 +42,20 @@ create index if not exists notes_user_updated_idx on notes (user_id, updated_at)
 create index if not exists notes_user_deleted_idx on notes (user_id, is_deleted);
 
 -- ---------------------------------------------------------------------
+-- Refresh tokens (opaque, stored as sha256 hash, rotated on every use)
+-- ---------------------------------------------------------------------
+create table if not exists refresh_tokens (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references users (id) on delete cascade,
+  token_hash text not null unique,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  revoked_at timestamptz
+);
+
+create index if not exists refresh_tokens_user_idx on refresh_tokens (user_id);
+
+-- ---------------------------------------------------------------------
 -- Folders
 -- ---------------------------------------------------------------------
 create table if not exists folders (

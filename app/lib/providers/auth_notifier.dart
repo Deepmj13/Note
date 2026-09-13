@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:note_v4/data/network/auth_api.dart';
 import 'package:note_v4/data/network/network_providers.dart';
 import 'package:note_v4/data/repositories/note_repository.dart';
 import 'package:note_v4/providers/sync_notifier.dart';
@@ -43,7 +44,9 @@ class AuthController extends Notifier<AuthUser?> {
   }
 
   Future<void> _resetOnSessionExpired() async {
-    await ref.read(tokenStorageProvider).clear();
+    final storage = ref.read(tokenStorageProvider);
+    await storage.clear();
+    await storage.clearRefresh();
     await ref.read(noteRepositoryProvider).clearLocalData();
     state = null;
   }
@@ -94,7 +97,7 @@ class AuthController extends Notifier<AuthUser?> {
       final result = await ref
           .read(authApiProvider)
           .login(email: email, password: password);
-      await ref.read(tokenStorageProvider).write(result.token);
+      await _storeTokens(result);
       await _adoptAndSync(AuthUser(id: result.user.id, email: result.user.email));
     } on DioException catch (e) {
       throw _mapDioError(e);
@@ -106,20 +109,42 @@ class AuthController extends Notifier<AuthUser?> {
       final result = await ref
           .read(authApiProvider)
           .register(email: email, password: password);
-      await ref.read(tokenStorageProvider).write(result.token);
+      await _storeTokens(result);
       await _adoptAndSync(AuthUser(id: result.user.id, email: result.user.email));
     } on DioException catch (e) {
       throw _mapDioError(e);
     }
   }
 
+  Future<void> _storeTokens(AuthResult result) async {
+    final storage = ref.read(tokenStorageProvider);
+    await storage.write(result.token);
+    await storage.writeRefresh(result.refreshToken);
+  }
+
   Future<void> signOut() async {
     // Final sync for the outgoing user, then clear local data so no pending
     // changes are lost when switching accounts.
     await ref.read(syncNotifierProvider.notifier).syncNow();
+    await _revokeRefreshToken();
     await ref.read(noteRepositoryProvider).clearLocalData();
-    await ref.read(tokenStorageProvider).clear();
+    final storage = ref.read(tokenStorageProvider);
+    await storage.clear();
+    await storage.clearRefresh();
     state = null;
+  }
+
+  /// Best-effort server-side revocation of the refresh token so a signed-out
+  /// session cannot be resumed from it. Never fails the local sign-out.
+  Future<void> _revokeRefreshToken() async {
+    try {
+      final refresh = await ref.read(tokenStorageProvider).readRefresh();
+      if (refresh != null && refresh.isNotEmpty) {
+        await ref.read(authApiProvider).logout(refresh);
+      }
+    } catch (_) {
+      // Local sign-out must succeed even if the network call fails.
+    }
   }
 }
 

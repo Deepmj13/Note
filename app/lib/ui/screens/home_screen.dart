@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:note_v4/core/app_page_route.dart';
 import 'package:note_v4/core/app_spacing.dart';
+import 'package:note_v4/core/models/note_block.dart';
 import 'package:note_v4/data/export/note_importer.dart';
 import 'package:note_v4/data/export/note_share.dart';
 import 'package:note_v4/data/local/database.dart';
@@ -16,6 +17,7 @@ import 'package:note_v4/theme.dart';
 import 'package:note_v4/ui/screens/editor_screen.dart';
 import 'package:note_v4/ui/screens/folders_screen.dart';
 import 'package:note_v4/ui/screens/settings_screen.dart';
+import 'package:note_v4/ui/screens/trash_screen.dart';
 import 'package:note_v4/ui/widgets/confirm_sheet.dart';
 import 'package:note_v4/ui/widgets/empty_state.dart';
 import 'package:note_v4/ui/widgets/entrance.dart';
@@ -37,7 +39,7 @@ enum _HomeFilter { all, favorites }
 
 enum _NoteSort { updated, created, title }
 
-enum _MoreAction { sort, folders, settings }
+enum _MoreAction { sort, folders, settings, trash }
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, this.folderId, this.folderName});
@@ -103,7 +105,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           .where(
             (n) =>
                 n.title.toLowerCase().contains(q) ||
-                n.content.toLowerCase().contains(q),
+                NoteBlock.plainTextFromStorage(n.content).toLowerCase().contains(q),
           )
           .toList();
     }
@@ -460,6 +462,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 label: 'Settings',
                 onTap: () => Navigator.pop(context, _MoreAction.settings),
               ),
+              _SheetActionRow(
+                icon: Icons.delete_outline,
+                label: 'Trash',
+                onTap: () => Navigator.pop(context, _MoreAction.trash),
+              ),
             ],
           ),
         ),
@@ -476,6 +483,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case _MoreAction.settings:
         Navigator.of(context).push(
           appPageRoute(const SettingsScreen()),
+        );
+      case _MoreAction.trash:
+        Navigator.of(context).push(
+          appPageRoute(const TrashScreen()),
         );
     }
   }
@@ -669,7 +680,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _importFromFiles() async {
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['txt', 'json'],
+      allowedExtensions: ['txt', 'json', 'md'],
     );
     if (result.isEmpty || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -683,7 +694,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       try {
         final bytes = await file.readAsBytes();
         final content = String.fromCharCodes(bytes);
-        final isJson = file.name.toLowerCase().endsWith('.json');
+        final name = file.name.toLowerCase();
+        final isJson = name.endsWith('.json');
+        final isMarkdown = !isJson && name.endsWith('.md');
         if (isJson) {
           final parsed = NoteImporter.fromJson(
             content,
@@ -705,6 +718,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             );
           }
+        } else if (isMarkdown) {
+          final note = NoteImporter.fromMarkdown(
+            content,
+            userId: userId,
+            folderId: _folderFilter,
+          );
+          entries.add(
+            ImportFileEntry(
+              name: note.title.isNotEmpty ? note.title : file.name,
+              content: content,
+            ),
+          );
+          notes.add(note);
         } else {
           final entry = ImportFileEntry(name: file.name, content: content);
           entries.add(entry);
@@ -830,7 +856,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     key: ValueKey('note-${note.id}'),
                     index: index,
                     child: PressableScale(
-                      onTap: () {
+onTap: () {
                         if (_selectionMode) {
                           _toggleSelect(note.id);
                         } else {

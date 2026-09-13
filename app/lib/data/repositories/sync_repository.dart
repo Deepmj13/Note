@@ -13,12 +13,22 @@ class SyncRepository {
 
   final SyncApi _api;
 
-  Future<Set<String>> pushNotes(String userId, List<Note> notes) {
-    return _api.pushNotes(userId, notes);
+  /// Maximum rows the backend accepts in a single push batch (see server
+  /// zod cap). Larger dirty sets are chunked automatically.
+  static const int _batchSize = 500;
+
+  Future<Set<String>> pushNotes(String userId, List<Note> notes) async {
+    return _pushInBatches(
+      (batch) => _api.pushNotes(userId, batch),
+      notes,
+    );
   }
 
-  Future<Set<String>> pushFolders(String userId, List<Folder> folders) {
-    return _api.pushFolders(userId, folders);
+  Future<Set<String>> pushFolders(String userId, List<Folder> folders) async {
+    return _pushInBatches(
+      (batch) => _api.pushFolders(userId, batch),
+      folders,
+    );
   }
 
   Future<List<Note>> pullNotes(String userId, DateTime since) {
@@ -27,6 +37,33 @@ class SyncRepository {
 
   Future<List<Folder>> pullFolders(String userId, DateTime since) {
     return _api.pullFolders(userId, since);
+  }
+
+  /// Permanently deletes [ids] on the server (trash "delete forever").
+  /// Batched to respect the server's per-request cap.
+  Future<void> purgeNotes(String userId, List<String> ids) async {
+    await _pushInBatches(
+      (batch) async {
+        await _api.purgeNotes(userId, batch);
+        return batch.map((id) => id).toSet();
+      },
+      ids,
+    );
+  }
+
+  Future<Set<String>> _pushInBatches<T>(
+    Future<Set<String>> Function(List<T>) pushOne,
+    List<T> rows,
+  ) async {
+    if (rows.isEmpty) return {};
+    final applied = <String>{};
+    for (var start = 0; start < rows.length; start += _batchSize) {
+      final end = (start + _batchSize > rows.length)
+          ? rows.length
+          : start + _batchSize;
+      applied.addAll(await pushOne(rows.sublist(start, end)));
+    }
+    return applied;
   }
 }
 

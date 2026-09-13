@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:note_v4/data/local/database.dart';
 import 'package:drift/drift.dart';
@@ -27,25 +29,6 @@ class NoteRepository {
   Stream<List<Note>> watchActiveNotes(String? userId) {
     final query = _db.select(_db.notes)
       ..where((n) => n.isDeleted.equals(false))
-      ..orderBy([
-        (n) => OrderingTerm.desc(n.isPinned),
-        (n) => OrderingTerm.desc(n.updatedAt),
-      ]);
-    if (userId != null) {
-      query.where((n) => n.userId.equals(userId));
-    }
-    return query.watch();
-  }
-
-  Stream<List<Note>> watchNotesInFolder(String? folderId, String? userId) {
-    final query = _db.select(_db.notes)
-      ..where(
-        (n) =>
-            n.isDeleted.equals(false) &
-            (folderId == null
-                ? n.folderId.isNull()
-                : n.folderId.equals(folderId)),
-      )
       ..orderBy([
         (n) => OrderingTerm.desc(n.isPinned),
         (n) => OrderingTerm.desc(n.updatedAt),
@@ -137,6 +120,42 @@ class NoteRepository {
     );
   }
 
+  // ---- Trash ----
+
+  /// Watches trashed notes (newest deletion first). A trashed note is never
+  /// edited in place, so its [Note.updatedAt] is the time it entered the
+  /// trash — used for ordering and "deleted X ago" without a dedicated
+  /// column (the local DB schema is intentionally frozen: the pinned
+  /// drift/riverpod codegen can't run under the current Dart SDK).
+  Stream<List<Note>> watchTrashedNotes(String? userId) {
+    final query = _db.select(_db.notes)
+      ..where((n) => n.isDeleted.equals(true))
+      ..orderBy([(n) => OrderingTerm.desc(n.updatedAt)]);
+    if (userId != null) {
+      query.where((n) => n.userId.equals(userId));
+    }
+    return query.watch();
+  }
+
+  Future<List<Note>> trashedNotes(String? userId) async {
+    final query = _db.select(_db.notes)
+      ..where((n) => n.isDeleted.equals(true))
+      ..orderBy([(n) => OrderingTerm.desc(n.updatedAt)]);
+    if (userId != null) {
+      query.where((n) => n.userId.equals(userId));
+    }
+    return query.get();
+  }
+
+  /// Hard-deletes [ids] locally. Rows are recorded as pending purges (see
+  /// [addPendingPurges]) so a subsequent pull cannot resurrect them until the
+  /// server has confirmed the delete.
+  Future<void> purgeNotes(List<String> ids) async {
+    final list = ids.toList();
+    if (list.isEmpty) return;
+    await (_db.delete(_db.notes)..where((n) => n.id.isIn(list))).go();
+  }
+
   // ---- Folders: local mutations (every change marks the row dirty) ----
 
   Future<void> insertFolder(Folder folder) async {
@@ -164,14 +183,24 @@ class NoteRepository {
   }
 
   Future<void> moveNotesOutOfFolder(String folderId) async {
-    await (_db.update(_db.notes)..where((n) => n.folderId.equals(folderId)))
-        .write(
+    final rows = await (_db.select(_db.notes)
+          ..where((n) => n.folderId.equals(folderId)))
+        .get();
+    if (rows.isEmpty) return;
+    await _db.batch((batch) {
+      for (final row in rows) {
+        batch.update(
+          _db.notes,
           NotesCompanion(
             folderId: const Value(null),
             updatedAt: Value(DateTime.now()),
             isSynced: const Value(false),
+            version: Value(row.version + BigInt.one),
           ),
+          where: (n) => n.id.equals(row.id),
         );
+      }
+    });
   }
 
   // ---- Sync support: dirty rows ----
@@ -239,11 +268,15 @@ class NoteRepository {
         );
   }
 
-  /// Removes all local notes, folders and sync metadata (called on logout).
+  /// Removes all local notes and folders plus per-user sync metadata (called
+  /// on logout). App settings persisted in the same key-value store
+  /// (`setting:*` keys) are left intact so theme/note-type preferences
+  /// survive signing out.
   Future<void> clearLocalData() async {
     await _db.delete(_db.notes).go();
     await _db.delete(_db.folders).go();
-    await _db.delete(_db.syncMeta).go();
+    await (_db.delete(_db.syncMeta)..where((m) => m.metaKey.like('setting:%').not()))
+        .go();
   }
 
   // ---- Sync support: incremental cursor ----
@@ -280,20 +313,65 @@ class NoteRepository {
     );
   }
 
+  // ---- Sync support: pending permanent deletes ----
+
+  /// Note ids whose permanent deletion has not yet been acknowledged by the
+  /// server. Persisted in the local key-value store so an offline purge can't
+  /// resurrect rows during a later pull (downloading a row whose id is still
+  /// pending purge is skipped).
+  static String _pendingPurgesKey(String userId) => 'pending_purges:$userId';
+
+  Future<List<String>> pendingPurges(String userId) async {
+    final row = await (_db.select(_db.syncMeta)
+          ..where((m) => m.metaKey.equals(_pendingPurgesKey(userId))))
+        .getSingleOrNull();
+    if (row?.value == null) return const [];
+    final decoded = jsonDecode(row!.value!) as List<dynamic>;
+    return decoded.map((e) => e.toString()).toList();
+  }
+
+  Future<void> addPendingPurges(String userId, Iterable<String> ids) async {
+    final merged = {...await pendingPurges(userId), ...ids}.toList();
+    await (_db.into(_db.syncMeta)).insertOnConflictUpdate(
+      SyncMetaData(
+        metaKey: _pendingPurgesKey(userId),
+        value: jsonEncode(merged),
+      ),
+    );
+  }
+
+  Future<void> clearPendingPurges(String userId) async {
+    await (_db.delete(_db.syncMeta)
+          ..where((m) => m.metaKey.equals(_pendingPurgesKey(userId))))
+        .go();
+  }
+
   // ---- Sync support: applying remote rows (last-write-wins) ----
 
   Future<void> applyRemoteNote(Note remote) async {
+    final purged = await pendingPurges(remote.userId);
+    if (purged.contains(remote.id)) return;
+
+    // Folder integrity: if the remote row points at a folder we do not know
+    // locally (reset device, server-normalized deletion), detach it so the
+    // note never ends up inside a nonexistent folder.
+    var effective = remote;
+    if (remote.folderId != null &&
+        !await _folderExists(remote.userId, remote.folderId!)) {
+      effective = remote.copyWith(folderId: const Value(null));
+    }
+
     final existing = await (_db.select(_db.notes)
           ..where((n) => n.id.equals(remote.id)))
         .getSingleOrNull();
     if (existing == null) {
-      await _db.into(_db.notes).insert(remote.copyWith(isSynced: true));
+      await _db.into(_db.notes).insert(effective.copyWith(isSynced: true));
       return;
     }
-    if (remote.updatedAt.isAfter(existing.updatedAt)) {
-      await _writeNote(remote.id, _noteCompanion(remote, synced: true));
+    if (effective.updatedAt.isAfter(existing.updatedAt)) {
+      await _writeNote(remote.id, _noteCompanion(effective, synced: true));
     } else if (!existing.isSynced &&
-        remote.updatedAt.isAtSameMomentAs(existing.updatedAt)) {
+        effective.updatedAt.isAtSameMomentAs(existing.updatedAt)) {
       await (_db.update(_db.notes)..where((n) => n.id.equals(remote.id)))
           .write(const NotesCompanion(isSynced: Value(true)));
     }
@@ -320,6 +398,13 @@ class NoteRepository {
 
   /// Legacy placeholder user ids used before authentication existed.
   static const legacyUserIds = ['', 'user1'];
+
+  Future<bool> _folderExists(String userId, String folderId) async {
+    final row = await (_db.select(_db.folders)
+          ..where((f) => f.id.equals(folderId) & f.userId.equals(userId)))
+        .getSingleOrNull();
+    return row != null;
+  }
 
   Future<void> _writeNote(String id, NotesCompanion companion) async {
     await (_db.update(_db.notes)..where((n) => n.id.equals(id))).write(

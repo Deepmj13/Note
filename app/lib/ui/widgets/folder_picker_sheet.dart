@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:note_v4/core/app_spacing.dart';
 import 'package:note_v4/data/local/database.dart';
+import 'package:note_v4/providers/auth_notifier.dart';
 import 'package:note_v4/providers/folders_notifier.dart';
 import 'package:note_v4/theme.dart';
 import 'package:note_v4/ui/widgets/folder_name_dialog.dart';
@@ -96,7 +97,7 @@ class _FolderPickerSheet extends ConsumerWidget {
                           await ref.read(foldersNotifierProvider.notifier).addFolder(
                             Folder(
                               id: id,
-                              userId: '',
+                              userId: ref.read(currentUserIdProvider) ?? '',
                               name: name,
                               parentFolderId: null,
                               createdAt: now,

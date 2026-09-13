@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:note_v4/core/models/note_block.dart';
 import 'package:note_v4/data/local/database.dart';
 import 'package:uuid/uuid.dart';
 
@@ -42,6 +43,39 @@ class NoteImporter {
       notes.add(_noteFromRaw(raw, userId, folderId, now));
     }
     return notes;
+  }
+
+  static Note fromMarkdown(
+    String source, {
+    required String userId,
+    String? folderId,
+  }) {
+    // Reuses the same heading/bullet/checklist rules as `NoteExporter.toMarkdown`
+    // (via the legacy parser), so an exported file round-trips losslessly:
+    // a leading `# title` line becomes the note title, every other block keeps
+    // its type.
+    final blocks = NoteBlock.fromStorage(source);
+    var title = '';
+    if (blocks.isNotEmpty && blocks.first.type == BlockType.heading) {
+      title = blocks.first.content.trim();
+      blocks.removeAt(0);
+    }
+    final now = DateTime.now();
+    return Note(
+      id: const Uuid().v4(),
+      userId: userId,
+      title: title,
+      content: NoteBlock.encode(blocks),
+      createdAt: now,
+      updatedAt: now,
+      isDeleted: false,
+      isSynced: false,
+      version: BigInt.one,
+      isFavorite: false,
+      isPinned: false,
+      noteType: NoteType.text,
+      folderId: folderId,
+    );
   }
 
   static Map<String, dynamic> _decode(String source) {

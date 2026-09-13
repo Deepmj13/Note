@@ -52,6 +52,30 @@ class NotesNotifier extends _$NotesNotifier {
     _sync();
   }
 
+  /// Permanently deletes [id] locally and records a pending purge so the
+  /// server removes it on the next sync (no trash resurrection).
+  Future<void> purgeNote(String id) async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+    final repo = ref.read(noteRepositoryProvider);
+    await repo.addPendingPurges(userId, [id]);
+    await repo.purgeNotes([id]);
+    _sync();
+  }
+
+  /// Permanently deletes every trashed note ("empty trash").
+  Future<void> purgeAllTrashed() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+    final repo = ref.read(noteRepositoryProvider);
+    final trashed = await repo.trashedNotes(userId);
+    if (trashed.isEmpty) return;
+    final ids = trashed.map((n) => n.id).toList();
+    await repo.addPendingPurges(userId, ids);
+    await repo.purgeNotes(ids);
+    _sync();
+  }
+
   Future<void> setFavorite(String id, bool value) async {
     await ref.read(noteRepositoryProvider).setFavorite(id, value);
     _sync();
@@ -67,3 +91,11 @@ class NotesNotifier extends _$NotesNotifier {
     _sync();
   }
 }
+
+/// Trashed notes for the current user (newest deletion first). Written by
+/// hand (not codegen) because the pinned riverpod generator can't run under
+/// the current Dart SDK.
+final trashedNotesProvider = StreamProvider.autoDispose<List<Note>>((ref) {
+  final userId = ref.watch(currentUserIdProvider);
+  return ref.watch(noteRepositoryProvider).watchTrashedNotes(userId);
+});

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:note_v4/core/app_spacing.dart';
+import 'package:note_v4/core/models/note_block.dart';
 import 'package:note_v4/core/utils/date_format.dart';
 import 'package:note_v4/data/local/database.dart';
 import 'package:note_v4/theme.dart';
@@ -66,9 +67,24 @@ class NoteCard extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xs),
                 _Preview(note: note, highlight: highlight),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  NoteDateFormatter.dateTime(note.updatedAt),
-                  style: context.metadataText,
+                Row(
+                  children: [
+                    Text(
+                      NoteDateFormatter.dateTime(note.updatedAt),
+                      style: context.metadataText,
+                    ),
+                    if (!note.isSynced) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Tooltip(
+                        message: 'Not synced yet',
+                        child: Icon(
+                          Icons.cloud_upload_outlined,
+                          size: 14,
+                          color: palette.warning,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -89,13 +105,12 @@ class _Preview extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
 
-    if (note.noteType == NoteType.checklist) {
-      final checked = _countChecked(note.content);
-      final total = _countItems(note.content);
+    if (NoteBlock.hasChecklistBlocks(note.content)) {
+      final counts = NoteBlock.checklistCounts(note.content);
       return Row(
         children: [
           Icon(
-            checked == total && total > 0
+            counts.total > 0 && counts.checked == counts.total
                 ? Icons.check_circle
                 : Icons.checklist,
             size: 16,
@@ -104,7 +119,7 @@ class _Preview extends StatelessWidget {
           const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Text(
-              total == 0 ? 'Checklist' : '$checked of $total completed',
+              counts.total == 0 ? 'Checklist' : '${counts.checked} of ${counts.total} completed',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.metadataText.copyWith(fontSize: 13),
@@ -114,7 +129,7 @@ class _Preview extends StatelessWidget {
       );
     }
 
-    final text = note.content.trim();
+    final text = NoteBlock.plainTextFromStorage(note.content).trim();
     if (text.isEmpty) {
       return Text(
         'No additional text',
@@ -130,25 +145,6 @@ class _Preview extends StatelessWidget {
       maxLines: 1,
       style: context.secondaryText.copyWith(fontSize: 13.5, height: 1.3),
     );
-  }
-
-  int _countItems(String content) {
-    final lines = content.split('\n');
-    var count = 0;
-    for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.startsWith('[ ]') || trimmed.startsWith('[x]')) count++;
-    }
-    return count;
-  }
-
-  int _countChecked(String content) {
-    final lines = content.split('\n');
-    var count = 0;
-    for (final line in lines) {
-      if (line.trim().startsWith('[x]')) count++;
-    }
-    return count;
   }
 }
 

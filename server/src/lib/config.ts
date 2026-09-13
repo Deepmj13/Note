@@ -14,7 +14,8 @@ function requireSecret(name: string, minLength = 24): string {
 }
 
 export const JWT_SECRET = requireSecret('JWT_SECRET');
-export const JWT_EXPIRES_IN = '7d';
+export const JWT_EXPIRES_IN = '15m';
+export const REFRESH_EXPIRES_DAYS = 30;
 export const PORT = Number(process.env.PORT ?? 3000);
 
 /**

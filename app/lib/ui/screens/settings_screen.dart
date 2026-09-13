@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:note_v4/core/app_spacing.dart';
 import 'package:note_v4/data/export/note_share.dart';
+import 'package:note_v4/data/local/database.dart';
 import 'package:note_v4/data/repositories/note_repository.dart';
 import 'package:note_v4/providers/auth_notifier.dart';
 import 'package:note_v4/providers/settings_providers.dart';
@@ -115,6 +116,16 @@ class SettingsScreen extends ConsumerWidget {
                 indent: AppSpacing.md,
                 endIndent: AppSpacing.md,
               ),
+              _SettingTile(
+                icon: Icons.science_outlined,
+                title: 'Export as Markdown',
+                subtitle: 'Export all notes as Markdown',
+                onTap: () => _exportAllMarkdown(context, ref),
+              ),
+              const Divider(
+                indent: AppSpacing.md,
+                endIndent: AppSpacing.md,
+              ),
               const _SettingTile(
                 icon: Icons.cleaning_services_outlined,
                 title: 'Clear cache',
@@ -152,14 +163,18 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _exportAllNotes(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
+  Future<List<Note>> _activeNotes(WidgetRef ref) async {
     final userId = ref.read(currentUserIdProvider);
-    if (userId == null) return;
-    final notes = await ref
+    if (userId == null) return [];
+    return ref
         .read(noteRepositoryProvider)
         .watchActiveNotes(userId)
         .first;
+  }
+
+  Future<void> _exportAllNotes(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notes = await _activeNotes(ref);
     if (notes.isEmpty) {
       messenger.showSnackBar(
         const SnackBar(content: Text('No notes to export')),
@@ -167,6 +182,18 @@ class SettingsScreen extends ConsumerWidget {
       return;
     }
     await NoteShare.exportJson(notes);
+  }
+
+  Future<void> _exportAllMarkdown(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notes = await _activeNotes(ref);
+    if (notes.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No notes to export')),
+      );
+      return;
+    }
+    await NoteShare.exportMarkdown(notes);
   }
 
   Future<void> _confirmSignOut(
